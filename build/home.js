@@ -1,5 +1,5 @@
-import { onAuthStateChanged , signOut , } from "https://www.gstatic.com/firebasejs/9.10.0/firebase-auth.js";
-import { auth , db } from "./config.js";
+import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.10.0/firebase-auth.js";
+import { auth, db } from "./config.js";
 import {
   collection,
   addDoc,
@@ -7,150 +7,125 @@ import {
   doc,
   deleteDoc,
   updateDoc,
-  Timestamp,
   query,
-  where,
-  orderBy,
 } from "https://www.gstatic.com/firebasejs/9.10.0/firebase-firestore.js";
 
-
-
-const logout = document.querySelector('#logout-btn')
+const logout = document.querySelector('#logout-btn');
 const form = document.querySelector("#form");
 const todo = document.querySelector("#todo");
+const todo2 = document.querySelector("#todo2");
 const ul = document.querySelector("#ul");
-const select = document.querySelector("#select");
-const citiesBtn = document.querySelectorAll(".cities-btn");
-const reset = document.querySelector(".reset");
 
 onAuthStateChanged(auth, (user) => {
     if (user) {
-      const uid = user.uid;
-      console.log(uid);
-      
+        const uid = user.uid;
+        console.log(uid);
     } else {
-        window.location = 'index.html'
+        window.location = 'index.html';
     }
-  });
+});
 
-
-
-  logout.addEventListener('click' , ()=> {
+logout.addEventListener('click', () => {
     signOut(auth).then(() => {
-        console.log('logout successfully');
-        window.location = 'index.html'
-      }).catch((error) => {
+        console.log('Logout successfully');
+        window.location = 'index.html';
+    }).catch((error) => {
         console.log(error);
-        
-      });
-  })
+    });
+});
 
 
-
-//global array
 let arr = [];
 
-// single city query
-
-citiesBtn.forEach((btn) => {
-  btn.addEventListener("click", async (event) => {
+async function getData() {
     arr = [];
-    console.log(event.target.innerHTML);
-    const todosRef = collection(db, "todos");
-    const q = query(
-      todosRef,
-      where("city", "==", event.target.innerHTML),
-      orderBy("time", "desc")
-    );
+    const q = query(collection(db, "todos"));
     const querySnapshot = await getDocs(q);
     querySnapshot.forEach((doc) => {
-      arr.push({ ...doc.data(), id: doc.id });
+        arr.push({ ...doc.data(), id: doc.id });
     });
     console.log(arr);
     renderTodo();
-  });
-});
-
-reset.addEventListener("click", getData);
-
-// get all data
-async function getData() {
-  arr = [];
-  const q = query(collection(db, "todos"), orderBy("time", "desc"));
-  const querySnapshot = await getDocs(q);
-  querySnapshot.forEach((doc) => {
-    arr.push({ ...doc.data(), id: doc.id });
-  });
-  console.log(arr);
-  renderTodo();
-  
 }
-
 getData();
 
-// render data on screen
+
 function renderTodo() {
-  ul.innerHTML = "";
-  if (arr.length === 0) {
-    ul.innerHTML = "data not found";
-    return;
-  }
-  arr.map((item) => {
-    ul.innerHTML += `
-        <li>${item.todo} &nbsp; &nbsp;
-        <button class="deleteBtn btn btn-dark my-3">Delete Todo</button>
-        <button class="editBtn btn btn-dark my-3">Edit Todo</button>
-        </li>
-        <p>${item.time ? item.time.toDate() : "no time"}</p>
-        <hr/>
+    ul.innerHTML = "";
+    if (arr.length === 0) {
+        ul.innerHTML = "";
+        return;
+    }
+    arr.forEach((item) => {
+        ul.innerHTML += `
+        <div class="card" style="width: 18rem;">
+        <div class="card-body">
+    <h5 class="card-title">${item.todo}</h5>
+    <p class="card-text">${item.todo2}</p>
+    <button class="deleteBtn btn btn-danger">Delete Ad</button> &nbsp; &nbsp; &nbsp;
+    <button class="editBtn btn btn-primary ">Edit Ad</button>
+  </div>
+</div> 
+</hr>
         `;
-  });
-
-  const deleteBtn = document.querySelectorAll(".deleteBtn");
-  const editBtn = document.querySelectorAll(".editBtn");
-
-  deleteBtn.forEach((btn, index) => {
-    btn.addEventListener("click", async () => {
-      console.log(arr[index]);
-      await deleteDoc(doc(db, "todos", arr[index].id));
-      console.log("Data deleted");
-      arr.splice(index, 1);
-      renderTodo();
     });
-  });
-  editBtn.forEach((btn, index) => {
-    btn.addEventListener("click", async () => {
-      const updatedNewValue = prompt("enter new value");
-      const todoUpdate = doc(db, "todos", arr[index].id);
-      await updateDoc(todoUpdate, {
-        todo: updatedNewValue,
-      });
-      console.log("Data updated");
-      arr[index].todo = updatedNewValue;
-      renderTodo();
+
+    const deleteButtons = document.querySelectorAll(".deleteBtn");
+    const editButtons = document.querySelectorAll(".editBtn");
+
+    deleteButtons.forEach((btn, index) => {
+        btn.addEventListener("click", async () => {
+            const id = arr[index].id;
+            await deleteDoc(doc(db, "todos", id));
+            console.log("Data deleted");
+            arr.splice(index, 1);
+            renderTodo();
+        });
     });
-  });
+
+    editButtons.forEach((btn, index) => {
+        btn.addEventListener("click", async () => {
+            const updatedTodo = prompt("Enter new value of todo:", arr[index].todo);
+            const updatedTodo2 = prompt("Enter new value fof description:", arr[index].todo2);
+
+            if (updatedTodo !== null && updatedTodo2 !== null) {
+                const todoUpdate = doc(db, "todos", arr[index].id);
+                await updateDoc(todoUpdate, {
+                    todo: updatedTodo,
+                    todo2: updatedTodo2,
+                });
+                console.log("Data updated");
+                arr[index].todo = updatedTodo;
+                arr[index].todo2 = updatedTodo2;
+                renderTodo();
+            }
+        });
+    });
 }
 
-// add todo in database
 form.addEventListener("submit", async (event) => {
-  event.preventDefault();
+    event.preventDefault();
 
-  try {
-    const docRef = await addDoc(collection(db, "todos"), {
-      todo: todo.value,
-      city: select.value,
-      time: Timestamp.fromDate(new Date()),
-    });
-    console.log("Document written with ID: ", docRef.id);
-    arr.push({
-      todo: todo.value,
-      id: docRef.id,
-      city: select.value,
-    });
-    renderTodo();
-    todo.value = "";
-  } catch (e) {
-    console.error("Error adding document: ", e);
-  }
+    const todoValue = todo.value.trim();
+    const todo2Value = todo2.value.trim();
+
+
+
+    try {
+        const docRef = await addDoc(collection(db, "todos"), {
+            todo: todoValue,
+            todo2: todo2Value,
+        });
+        console.log("Document written with ID: ", docRef.id);
+        arr.push({
+            todo: todoValue,
+            todo2: todo2Value,
+            id: docRef.id,
+        });
+        renderTodo();
+        todo.value = "";
+        todo2.value = "";
+    } catch (e) {
+        console.error("Error adding document: ", e);
+    }
 });
